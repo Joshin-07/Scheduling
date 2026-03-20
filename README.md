@@ -31,4 +31,29 @@ An interactive web-based simulator to visualize the **First Fit memory allocatio
 
 ---
 
-## 📂 Project Structure
+## 🧩 How It Works
+
+### 1. Setup Memory Blocks
+- Enter block sizes (default: `100, 500, 200, 300 KB`)
+- Add or remove blocks as needed
+
+---
+
+### 2. Select Partitioning Type
+
+#### 🔹 Fixed Partitioning
+- Blocks have fixed sizes  
+- May cause **internal fragmentation**
+
+#### 🔹 Variable Partitioning
+- Blocks split dynamically  
+- Eliminates internal fragmentation  
+- May cause **external fragmentation**
+
+---
+
+### 3. Allocate a Process
+- Enter:
+  - **Process ID** (e.g., `P1`)
+  - **Process Size (KB)**
+- Click **Allocate Memory**
