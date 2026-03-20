@@ -62,7 +62,7 @@ An interactive web-based simulator to visualize the **First Fit memory allocatio
 ## ⚙️ Installation & Setup
 
 ### 1. Clone the Repository
-git clone https://github.com/your-username/memory-management-simulator.git
+git clone https://github.com/Joshin-07/memory-management-simulator.git
 
 ### 2. Navigate to Project Folder
 cd memory-management-simulator
