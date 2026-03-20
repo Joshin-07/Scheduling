@@ -67,7 +67,8 @@ git clone https://github.com/Joshin-07/memory-management-simulator.git
 ### 2. Navigate to Project Folder
 cd memory-management-simulator
 
-### 3. Open index.html in your browser
+### 3. Run the Application
+Open index.html in your browser
 OR
 Use Live Server (recommended in VS Code)
 
