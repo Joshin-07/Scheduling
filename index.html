@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Management Simulator — First Fit</title>
+    <!-- Modern Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --success: #10b981;
+            --success-bg: rgba(16, 185, 129, 0.1);
+            --danger: #ef4444;
+            --danger-bg: rgba(239, 68, 68, 0.1);
+            --free: #64748b;
+            --allocated: #10b981;
+            --fragment: #ef4444;
+            --input-bg: #0f172a;
+        }
+
+        /* Base & Reset */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Layout */
+        header {
+            background-color: var(--card-bg);
+            padding: 1.5rem;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+            font-size: 1.5rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            padding: 2rem;
+            gap: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .input-card { flex: 0 0 350px; display: flex; flex-direction: column; gap: 1.5rem; }
+        .output-card { flex: 1; display: flex; flex-direction: column; gap: 1.5rem; min-width: 0; }
+
+        /* Typography & Utilities */
+        h4 { font-size: 1.1rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.8rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+        .flex { display: flex; }
+        .flex-col { display: flex; flex-direction: column; }
+        .gap-2 { gap: 0.5rem; }
+        .gap-4 { gap: 1rem; }
+        .items-center { align-items: center; }
+        .flex-1 { flex: 1; }
+        .w-full { width: 100%; }
+        .mt-2 { margin-top: 0.5rem; }
+        .mt-4 { margin-top: 1rem; }
+        .mb-2 { margin-bottom: 0.5rem; }
+        
+        /* Inputs */
+        .input-group label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            margin-bottom: 0.3rem;
+            display: block;
+        }
+        input, select {
+            background-color: var(--input-bg);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 0.6rem 0.8rem;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+            width: 100%;
+        }
+        input:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
+        input:disabled, select:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        /* Buttons */
+        button {
+            cursor: pointer;
+            border: none;
+            padding: 0.6rem 1rem;
+            border-radius: 6px;
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+        }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .btn-primary { background-color: var(--primary); color: white; }
+        .btn-primary:hover:not(:disabled) { background-color: var(--primary-hover); transform: translateY(-1px); }
+        .btn-primary:active:not(:disabled) { transform: translateY(0); }
+        
+        .btn-secondary { background-color: transparent; color: var(--primary); border: 1px solid var(--primary); }
+        .btn-secondary:hover:not(:disabled) { background-color: rgba(59, 130, 246, 0.1); }
+        
+        .btn-danger { background-color: transparent; color: var(--danger); border: 1px solid var(--danger); }
+        .btn-danger:hover:not(:disabled) { background-color: var(--danger-bg); }
+        
+        .btn-text { background: none; color: var(--text-muted); padding: 0.3rem; font-size: 0.85rem; padding-left: 0; }
+        .btn-text:hover:not(:disabled) { color: var(--success); text-decoration: underline; }
+
+        /* Memory Map */
+        .map-section {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1.2rem;
+            background: var(--bg-color);
+        }
+        .legend {
+            display: flex;
+            gap: 1.5rem;
+            margin-bottom: 1.2rem;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            justify-content: center;
+        }
+        .legend-item { display: flex; align-items: center; gap: 0.5rem; }
+        .legend-color { width: 14px; height: 14px; border-radius: 3px; }
+
+        .memory-map {
+            display: flex;
+            width: 100%;
+            height: 90px;
+            border-radius: 8px;
+            border: 2px solid var(--border);
+            overflow: hidden;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .memory-col {
+            display: flex;
+            flex-direction: column;
+            border-right: 2px solid var(--border);
+            transition: flex 0.4s ease;
+            min-width: 0;
+        }
+        .memory-col:last-child { border-right: none; }
+        
+        .block-label {
+            height: 22px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding-top: 3px;
+            background: rgba(30, 41, 59, 0.5);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .block-segments {
+            display: flex;
+            flex: 1;
+        }
+        .segment {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.85rem;
+            font-weight: 600;
+            overflow: hidden;
+            transition: all 0.4s ease;
+            cursor: pointer;
+        }
+        .segment:hover { filter: brightness(1.1); }
+        .segment span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%; }
+        .segment small { font-size: 0.7rem; opacity: 0.9; font-weight: 400; }
+
+        .bg-free { background-color: var(--free); color: #0f172a; }
+        .bg-allocated { background-color: var(--allocated); }
+        .bg-fragment { background-color: var(--fragment); }
+
+        /* Table */
+        .table-container {
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg-color);
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th, td { padding: 0.8rem 1rem; text-align: left; border-bottom: 1px solid var(--border); }
+        tr:last-child td { border-bottom: none; }
+        th { color: var(--text-muted); font-weight: 500; background-color: rgba(30, 41, 59, 0.5); }
+        tr:hover td { background-color: rgba(255, 255, 255, 0.02); }
+        
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.6rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .badge-free { background-color: rgba(100, 116, 139, 0.2); color: #cbd5e1; }
+        .badge-allocated { background-color: rgba(16, 185, 129, 0.2); color: var(--allocated); }
+
+        /* Status Messages */
+        .status-box {
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 500;
+            display: none;
+            animation: slideDown 0.3s ease forwards;
+            font-size: 0.95rem;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .msg-success { background-color: var(--success-bg); border: 1px solid var(--success); color: var(--success); }
+        .msg-error { background-color: var(--danger-bg); border: 1px solid var(--danger); color: var(--danger); }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .main-container { flex-direction: column; }
+            .input-card { flex: auto; }
+        }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-color); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+</head>
+<body>
+
+    <header>
+        Memory Management Simulator — First Fit
+    </header>
+
+    <div class="main-container">
+        <!-- Input Card -->
+        <div class="card input-card">
+            
+            <div class="input-section">
+                <h4>App Settings</h4>
+                <div class="input-group mb-2">
+                    <label>Allocation Technique</label>
+                    <input type="text" value="First Fit" readonly disabled class="text-center font-semibold">
+                </div>
+                <div class="input-group">
+                    <label>Partitioning Type</label>
+                    <select id="partition-type">
+                        <option value="fixed">Fixed Partitioning</option>
+                        <option value="variable">Variable Partitioning</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="input-section">
+                <h4>Memory Blocks Setup</h4>
+                <!-- Dynamic List Container -->
+                <div id="blocks-list" class="flex flex-col gap-2"></div>
+                <button id="add-block-btn" class="btn-text mt-2">+ Add Block</button>
+            </div>
+
+            <div class="input-section">
+                <h4>Process Input</h4>
+                <div class="input-group mb-2">
+                    <label>Process ID</label>
+                    <input type="text" id="process-id" placeholder="e.g., P1" autocomplete="off">
+                </div>
+                <div class="input-group">
+                    <label>Process Size (KB)</label>
+                    <input type="number" id="process-size" placeholder="e.g., 212" min="1">
+                </div>
+            </div>
+
+            <div class="flex-col gap-2 mt-2">
+                <div class="flex gap-2">
+                    <button id="btn-allocate" class="btn-primary flex-1">Allocate Memory</button>
+                    <button id="btn-next" class="btn-secondary flex-1">Next Request</button>
+                </div>
+                <button id="btn-reset" class="btn-danger w-full mt-2">Reset Simulator</button>
+            </div>
+        </div>
+
+        <!-- Output Card -->
+        <div class="card output-card">
+            
+            <!-- Dynamic Status Message -->
+            <div id="status-box" class="status-box"></div>
+
+            <div class="map-section">
+                <div class="legend">
+                    <div class="legend-item"><div class="legend-color bg-allocated"></div> <span>🟢 Allocated</span></div>
+                    <div class="legend-item"><div class="legend-color bg-fragment"></div> <span>🔴 Fragmentation (Wasted)</span></div>
+                    <div class="legend-item"><div class="legend-color bg-free"></div> <span>⬜ Free Box</span></div>
+                </div>
+                <!-- Visual Map -->
+                <div class="memory-map" id="memory-map">
+                    <!-- Columns injected by JS -->
+                </div>
+            </div>
+
+            <!-- Allocation Table -->
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Block No.</th>
+                            <th>Block Size (KB)</th>
+                            <th>Process ID</th>
+                            <th>Process Size (KB)</th>
+                            <th>Status</th>
+                            <th>Fragmentation (KB)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body">
+                        <!-- Rows injected by JS -->
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+
+<script>
+    // System State
+    const state = {
+        isInitialized: false,
+        partitionCounter: 0,
+        blocks: [],             // Array storing current memory partitions
+        inputValues: [100, 500, 200, 300] // Initial defaults
+    };
+
+    // DOM Elements
+    const UI = {
+        blocksList: document.getElementById('blocks-list'),
+        addBlockBtn: document.getElementById('add-block-btn'),
+        partitionType: document.getElementById('partition-type'),
+        processId: document.getElementById('process-id'),
+        processSize: document.getElementById('process-size'),
+        btnAllocate: document.getElementById('btn-allocate'),
+        btnNext: document.getElementById('btn-next'),
+        btnReset: document.getElementById('btn-reset'),
+        statusBox: document.getElementById('status-box'),
+        memoryMap: document.getElementById('memory-map'),
+        tableBody: document.getElementById('table-body')
+    };
+
+    // Initialize the UI on Load
+    function initApp() {
+        renderBlockInputs();
+        renderEmptyState();
+    }
+
+    // Render Block Input fields
+    function renderBlockInputs() {
+        UI.blocksList.innerHTML = '';
+        state.inputValues.forEach((val, idx) => {
+            const div = document.createElement('div');
+            div.className = 'flex items-center gap-2';
+            
+            const label = document.createElement('label');
+            label.className = 'w-[60px] text-sm text-slate-400 font-medium whitespace-nowrap';
+            label.style.width = '60px'; // hardcoded width for alignment
+            label.innerText = `Block ${idx + 1}`;
+            
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.className = 'block-input flex-1';
+            input.value = val;
+            input.min = '1';
+            if(state.isInitialized) input.disabled = true;
+
+            input.addEventListener('change', (e) => {
+                state.inputValues[idx] = parseInt(e.target.value, 10) || 100;
+            });
+
+            div.appendChild(label);
+            div.appendChild(input);
+
+            // Add X button if more than 4 blocks
+            if (state.inputValues.length > 4 && !state.isInitialized) {
+                const rmBtn = document.createElement('button');
+                rmBtn.className = 'btn-danger flex items-center justify-center';
+                rmBtn.style.padding = '0.4rem';
+                rmBtn.style.width = '2.2rem';
+                rmBtn.innerHTML = '✕';
+                rmBtn.onclick = () => {
+                    state.inputValues.splice(idx, 1);
+                    renderBlockInputs();
+                };
+                div.appendChild(rmBtn);
+            }
+            UI.blocksList.appendChild(div);
+        });
+    }
+
+    UI.addBlockBtn.addEventListener('click', () => {
+        if (!state.isInitialized) {
+            state.inputValues.push(200); // default new block size
+            renderBlockInputs();
+        }
+    });
+
+    // Validates inputs and boots up the memory simulation map
+    function initSimulationState() {
+        const blocks = [];
+        state.partitionCounter = 0;
+        
+        for (let i = 0; i < state.inputValues.length; i++) {
+            const size = state.inputValues[i];
+            if (isNaN(size) || size <= 0) {
+                showStatus('error', `❌ Invalid size for Block ${i + 1}. Please enter positive numbers only.`);
+                return false;
+            }
+            state.partitionCounter++;
+            blocks.push({
+                id: state.partitionCounter.toString(),
+                size: size,
+                isAllocated: false,
+                processId: null,
+                processSize: 0,
+                internalFrag: 0
+            });
+        }
+        
+        state.blocks = blocks;
+        state.isInitialized = true;
+        
+        // Lock UI configs
+        UI.partitionType.disabled = true;
+        UI.addBlockBtn.disabled = true;
+        UI.addBlockBtn.style.opacity = '0.5';
+        renderBlockInputs(); // to apply disabled styling
+        
+        return true;
+    }
+
+    // Process Memory Allocation
+    UI.btnAllocate.addEventListener('click', () => {
+        if (!state.isInitialized) {
+            if (!initSimulationState()) return;
+        }
+
+        const pid = UI.processId.value.trim();
+        const psize = parseInt(UI.processSize.value, 10);
+        const type = UI.partitionType.value;
+
+        // Validations
+        if (!pid) return showStatus('error', '❌ Please enter a Process ID (e.g. P1).');
+        if (isNaN(psize) || psize <= 0) return showStatus('error', '❌ Please enter a valid positive Process Size.');
+        if (state.blocks.find(b => b.processId === pid)) return showStatus('error', `❌ Process '${pid}' is already in memory.`);
+
+        let allocated = false;
+        let blockIdAssigned = null;
+
+        // FIRST FIT ALGORITHM
+        for (let i = 0; i < state.blocks.length; i++) {
+            const block = state.blocks[i];
+            
+            if (!block.isAllocated && block.size >= psize) {
+                if (type === 'fixed') {
+                    // Fixed Partitioning
+                    block.isAllocated = true;
+                    block.processId = pid;
+                    block.processSize = psize;
+                    block.internalFrag = block.size - psize;
+                    allocated = true;
+                    blockIdAssigned = block.id;
+                } else {
+                    // Variable Partitioning -> Splits block instantly
+                    const remaining = block.size - psize;
+                    
+                    block.isAllocated = true;
+                    block.processId = pid;
+                    block.processSize = psize;
+                    block.size = psize; // Block shrinks to perfectly fit process
+                    allocated = true;
+                    blockIdAssigned = block.id;
+                    
+                    // Generate new free fragment logically next to allocated
+                    if (remaining > 0) {
+                        state.partitionCounter++;
+                        state.blocks.splice(i + 1, 0, {
+                            id: state.partitionCounter.toString(),
+                            size: remaining,
+                            isAllocated: false,
+                            processId: null,
+                            processSize: 0,
+                            internalFrag: 0
+                        });
+                    }
+                }
+                break; // Because it's First Fit, stop after first successful mapping
+            }
+        }
+
+        // Handle the Result
+        if (allocated) {
+            showStatus('success', `✅ Process ${pid} successfully allocated to Box ${blockIdAssigned}`);
+        } else {
+            // Calculation of External Fragmentation
+            const freeFragments = state.blocks.filter(b => !b.isAllocated);
+            const totalFree = freeFragments.reduce((sum, b) => sum + b.size, 0);
+            
+            showStatus('error', `❌ Memory allocation failed — insufficient space for Process ${pid}. \nExternal Fragmentation: ${totalFree} KB.`);
+        }
+
+        // Render graphical and tabular views
+        updateVisualMap();
+        updateTable();
+    });
+
+    // UI Helpers
+    function showStatus(type, msg) {
+        UI.statusBox.className = `status-box msg-${type}`;
+        UI.statusBox.innerText = msg;
+        UI.statusBox.style.display = 'block';
+    }
+
+    // Handles map UI updates dynamically using Flexbox proportions
+    function updateVisualMap() {
+        UI.memoryMap.innerHTML = '';
+        const type = UI.partitionType.value;
+
+        state.blocks.forEach(block => {
+            // Memory Column Wrapper
+            const col = document.createElement('div');
+            col.className = 'memory-col';
+            col.style.flex = block.size; // Power of flexbox handles proportion
+
+            // Header Layer
+            const header = document.createElement('div');
+            header.className = 'block-label';
+            header.innerText = `B${block.id} (${block.size}K)`;
+            header.title = `Block B${block.id} | Size: ${block.size} KB`;
+
+            // Segment Layout Layer
+            const segments = document.createElement('div');
+            segments.className = 'block-segments';
+
+            if (block.isAllocated) {
+                // Render Allocated Space
+                const segAlloc = document.createElement('div');
+                segAlloc.className = 'segment bg-allocated';
+                segAlloc.title = `Process ${block.processId} | Size: ${block.processSize} KB`;
+                segAlloc.innerHTML = `<span>${block.processId}</span><small>${block.processSize}K</small>`;
+                
+                if (type === 'fixed') {
+                    segAlloc.style.flex = block.processSize;
+                    segments.appendChild(segAlloc);
+
+                    // Render Internal Fragmentation (Red Wasted Space)
+                    if (block.internalFrag > 0) {
+                        const segFrag = document.createElement('div');
+                        segFrag.className = 'segment bg-fragment';
+                        segFrag.style.flex = block.internalFrag;
+                        segFrag.title = `Internal Fragmentation | Wasted: ${block.internalFrag} KB`;
+                        segFrag.innerHTML = `<span>Frag</span><small>${block.internalFrag}K</small>`;
+                        segments.appendChild(segFrag);
+                    }
+                } else {
+                    // Variable: Completely fills shrunk block (no internal frag)
+                    segAlloc.style.flex = 1;
+                    segments.appendChild(segAlloc);
+                }
+            } else {
+                // Free Block / Fragment
+                const segFree = document.createElement('div');
+                segFree.className = 'segment bg-free';
+                segFree.style.flex = 1;
+                segFree.title = `Free ${type === 'fixed' ? 'Block' : 'Fragment'} | Size: ${block.size} KB`;
+                segFree.innerHTML = `<span>Free</span><small>${block.size}K</small>`;
+                segments.appendChild(segFree);
+            }
+
+            col.appendChild(header);
+            col.appendChild(segments);
+            UI.memoryMap.appendChild(col);
+        });
+    }
+
+    // Handles Table View rendering
+    function updateTable() {
+        UI.tableBody.innerHTML = '';
+        const isFixed = UI.partitionType.value === 'fixed';
+
+        state.blocks.forEach(block => {
+            const tr = document.createElement('tr');
+            
+            // Generate columns
+            const cols = [
+                `B${block.id}`,
+                block.size,
+                block.isAllocated ? block.processId : '-',
+                block.isAllocated ? block.processSize : '-',
+                `<span class="badge ${block.isAllocated ? 'badge-allocated' : 'badge-free'}">${block.isAllocated ? 'Allocated' : 'Free'}</span>`,
+                (block.isAllocated && isFixed) ? block.internalFrag : '-' // Frag info
+            ];
+
+            cols.forEach(content => {
+                const td = document.createElement('td');
+                td.innerHTML = content;
+                tr.appendChild(td);
+            });
+            UI.tableBody.appendChild(tr);
+        });
+    }
+
+    function renderEmptyState() {
+        UI.memoryMap.innerHTML = '<div style="flex:1; display:flex; align-items:center; justify-content:center; color:#64748b; font-size: 0.9rem;">Map empty. Enter block sizes and allocate memory.</div>';
+        UI.tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #64748b; padding: 2rem;">No data available. Proceed to allocate a process.</td></tr>';
+    }
+
+    // Additional Controls
+    UI.btnNext.addEventListener('click', () => {
+        UI.processId.value = '';
+        UI.processSize.value = '';
+        UI.processId.focus();
+        UI.statusBox.style.display = 'none';
+    });
+
+    UI.btnReset.addEventListener('click', () => {
+        // Clear logic
+        state.isInitialized = false;
+        state.partitionCounter = 0;
+        state.blocks = [];
+        state.inputValues = [100, 500, 200, 300]; // Reset defaults
+        
+        // Reset UI Elements
+        UI.partitionType.disabled = false;
+        UI.partitionType.value = 'fixed';
+        UI.addBlockBtn.disabled = false;
+        UI.addBlockBtn.style.opacity = '1';
+        
+        UI.processId.value = '';
+        UI.processSize.value = '';
+        UI.statusBox.style.display = 'none';
+        
+        renderBlockInputs();
+        renderEmptyState();
+    });
+
+    // Boot
+    initApp();
+</script>
+</body>
+</html>
