@@ -57,3 +57,35 @@ An interactive web-based simulator to visualize the **First Fit memory allocatio
   - **Process ID** (e.g., `P1`)
   - **Process Size (KB)**
 - Click **Allocate Memory**
+---
+
+## ⚙️ Installation & Setup
+
+### 1. Clone the Repository
+git clone https://github.com/your-username/memory-management-simulator.git
+
+### 2. Navigate to Project Folder
+cd memory-management-simulator
+
+### 3. Open index.html in your browser
+OR
+Use Live Server (recommended in VS Code)
+
+---
+## 🎯 Learning Objectives
+
+This project helps you understand:
+- Memory management in Operating Systems
+- First Fit allocation algorithm
+- Difference between Fixed and Variable Partitioning
+- Internal vs External Fragmentation
+- How processes are allocated in memory
+- Visualization of memory allocation techniques
+  
+---
+## Deployment
+
+
+---
+## License 
+This project is licensed under the MIT License.
